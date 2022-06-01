@@ -6,7 +6,7 @@
 /*   By: cfabian <cfabian@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/30 19:55:33 by cfabian           #+#    #+#             */
-/*   Updated: 2022/06/01 20:11:59 by cfabian          ###   ########.fr       */
+/*   Updated: 2022/06/01 21:48:56 by cfabian          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,17 +14,6 @@
 #include <stdio.h>
 
 int g_last_exit = 0;
-
-void free_data(t_data *data)
-{
-	if (data)
-	{
-		if (data->cmd)
-			free(data->cmd);
-		free_data(data->next);
-		free(data);
-	}
-}
 
 int ft_strlen(char *str)
 {
@@ -39,7 +28,7 @@ int ft_strlen(char *str)
 
 int ft_cd(char **arg)
 {
-	if (!arg[1] || arg[2])
+	if (!arg[1] || (arg[2] && strcmp(arg[2], ";") != 0 && strcmp(arg[2], "|") != 0))
 	{
 		write(2, "error: cd: bad arguments\n", 26);
 		return (1);
@@ -52,123 +41,119 @@ int ft_cd(char **arg)
 	return (1);
 }
 
-char	**alloc_cmd_size(char **argv, int start)
+int 	find_next(char **strings, char *str)
 {
-	char **cmd;
-	int	size = 0;
+	int i = 0;
 	
-	while (argv[start] && strncmp(argv[start], "|", 2) &&
-	strncmp(argv[start], ";", 2))
+	if (!strings)
+		return (0);
+	while (strings[i])
 	{
-		start++;
-		size++;
+		if (strcmp(strings[i], str) == 0)
+			break ;
+		i++;
 	}
-	cmd = malloc(sizeof(char *) * (size + 1));
-	while (size >= 0)
-	{
-		cmd[size] = NULL;
-		size --;
-	}
-	return (cmd);
+	return (i);
 }
 
-t_data	*init_data(char **argv, int argc, int start, enum e_type before)
+void	replace_cmd_end_with_null(char **cmd)
 {
-	t_data	*data = malloc(sizeof(t_data));
-	data->next = NULL;
-	int	i = 0;
-	
-	data->cmd = alloc_cmd_size(argv, start);
-	data->before = before;
-	data->after = END;
-	while (start < argc && argv[start])
+	int i = 0;
+	if(!cmd)
+		return ;
+	while (cmd[i])
 	{
-		if (!strcmp(argv[start], "|"))
+		if (strcmp(cmd[i], "|") == 0 || strcmp(cmd[i], ";") == 0)
 		{
-			data->after = PIPE;
-			data->next = init_data(argv, argc, start + 1, PIPE);
-			break ;
+			cmd[i] = NULL;
+			return ;
 		}
-		else if (!strcmp(argv[start], ";"))
-		{
-			data->after = SEMICOL;
-			data->next = init_data(argv, argc, start + 1 , START);
-			break ;
-		}
-		else
-		{
-			data->cmd[i] = argv[start];
-			i++;
-		}
-		start++;
-	}
-	return (data);
+		i++;
+	}	
 }
 
-void	pipe_and_exec(t_data *data, int old_pipe[2], char **envp)
+void	pipe_and_exec(char **cmd, int old_pipe[2], char **envp)
 {
 	int pipes[2];
-
-	if (data->after == PIPE)
+	int next_pipe = (find_next(cmd, "|") < find_next(cmd, ";"))? 1 : 0;
+	// printf("pipe: %d\n", next_pipe);
+	// write(2, "next: ", 7);
+	// write(2, cmd[0], ft_strlen(cmd[0]));
+	// write(2, "\n", 2);
+	
+	if (next_pipe)
+	{
 		pipe(pipes);
+		//printf(" oldpipe0: %d read: %d, write: %d \n", old_pipe[0], pipes[0], pipes[1]);
+	}
+		
 	pid_t pid = fork();
 	if (pid == 0)
 	{
-		if (data->before == PIPE)
+		if (old_pipe[0] != STDIN_FILENO)
 		{
 			dup2(old_pipe[READ], STDIN_FILENO);
 			close(old_pipe[READ]);
 			close(old_pipe[WRITE]);
 		}
-		if (data->after == PIPE)
+		if (next_pipe)
 		{
 			dup2(pipes[WRITE], STDOUT_FILENO);
 			close(pipes[WRITE]);
 			close(pipes[READ]);
 		}
-		execve(data->cmd[0], data->cmd, envp);
+		replace_cmd_end_with_null(cmd);
+		execve(cmd[0], cmd, envp);
 		write(2, "error: cannot execute ", 23);
-		write(2, data->cmd[0], ft_strlen(data->cmd[0]));
+		write(2, cmd[0], ft_strlen(cmd[0]));
 		write(2, "\n", 2);
-		free_data(data);
 		exit(EXIT_FAILURE);
 	}
 	if (pid > 0)
 	{
-		if (data->after == PIPE)
+		if (old_pipe[0] != STDIN_FILENO)
 		{
-			pipe_and_exec(data->next, pipes, envp);
+			close(old_pipe[READ]);
+			close(old_pipe[WRITE]);
+		}
+		if (next_pipe)
+		{
+			int offset = find_next(cmd, "|") + 1;
+			pipe_and_exec(cmd + offset, pipes, envp);
 			close(pipes[WRITE]);
 			close(pipes[READ]);
 		}
 	}
 }
 
-void	ft_exec(t_data *data, char **envp)
+void	ft_exec(char **argv_start, char **envp)
 {
-	if (!data || !data->before)
+	int 	oldpipe[2];
+	
+	if (!argv_start || !argv_start[0] || strcmp(argv_start[0], ";") == 0)
 		return ;
-	if (data->before == PIPE || !data->cmd || !data->cmd[0])
-		ft_exec(data->next, envp);
-	if (data->after != PIPE && !strcmp(data->cmd[0], "cd"))
-		ft_cd(data->cmd);
-	else if (data->cmd)
+	if (strcmp(argv_start[0], "cd") == 0)
+		ft_cd(argv_start);
+	else
 	{
-		pipe_and_exec(data, NULL, envp);
-		while (waitpid (-1, 0x0, 0x0) > 0);
+		oldpipe[0] = STDIN_FILENO;
+		pipe_and_exec(argv_start, oldpipe, envp);
+		//while (waitpid (-1, &g_last_exit, 0x0) > 0);
 	}
-	if (data->after == END)
-		return ;
-	ft_exec(data->next, envp);
 }
 
 int	main(int argc, char **argv, char **envp)
 {
-	if (!argv)
-		return (0);
-	t_data *data = (argc > 1)? init_data(argv, argc, 1, START) : NULL;
-	if (data)
-		ft_exec(data, envp);
-	free_data(data);
-	return (0);
+	int 		i = 1;
+
+	if (strcmp(argv[argc - 1], ";") == 0)
+		argv[argc - 1] = NULL;
+	else
+		argv[argc] = NULL;
+	while (i < argc)
+	{
+		ft_exec(argv + i, envp);
+		i += find_next(argv + i, ";") + 1;
+	}
+	return (g_last_exit);
 }
