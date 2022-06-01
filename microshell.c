@@ -6,7 +6,7 @@
 /*   By: cfabian <cfabian@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/30 19:55:33 by cfabian           #+#    #+#             */
-/*   Updated: 2022/06/01 17:56:13 by cfabian          ###   ########.fr       */
+/*   Updated: 2022/06/01 20:11:59 by cfabian          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,8 +64,6 @@ char	**alloc_cmd_size(char **argv, int start)
 		size++;
 	}
 	cmd = malloc(sizeof(char *) * (size + 1));
-	//if (!cmd)
-	//	return (NULL);
 	while (size >= 0)
 	{
 		cmd[size] = NULL;
@@ -81,14 +79,12 @@ t_data	*init_data(char **argv, int argc, int start, enum e_type before)
 	int	i = 0;
 	
 	data->cmd = alloc_cmd_size(argv, start);
-	//printf("data-before: %i \n", before);
 	data->before = before;
 	data->after = END;
 	while (start < argc && argv[start])
 	{
 		if (!strcmp(argv[start], "|"))
 		{
-			//printf("data-after: pipe \n");
 			data->after = PIPE;
 			data->next = init_data(argv, argc, start + 1, PIPE);
 			break ;
@@ -96,14 +92,12 @@ t_data	*init_data(char **argv, int argc, int start, enum e_type before)
 		else if (!strcmp(argv[start], ";"))
 		{
 			data->after = SEMICOL;
-			//printf("data-after: semicol \n");
 			data->next = init_data(argv, argc, start + 1 , START);
 			break ;
 		}
 		else
 		{
 			data->cmd[i] = argv[start];
-			//printf("data-cmd: %s \n", data->cmd[i]);
 			i++;
 		}
 		start++;
@@ -115,20 +109,11 @@ void	pipe_and_exec(t_data *data, int old_pipe[2], char **envp)
 {
 	int pipes[2];
 
-	//while (data->after == PIPE)
-	//{
 	if (data->after == PIPE)
-	{
 		pipe(pipes);
-		//write(2, "pipe \n", 7);
-		// printf("fd: pipe0: %d\n", pipes[0]);
-		// printf("fd: pipe1: %d\n", pipes[1]);
-	}
-		
 	pid_t pid = fork();
 	if (pid == 0)
 	{
-		//handle input
 		if (data->before == PIPE)
 		{
 			dup2(old_pipe[READ], STDIN_FILENO);
@@ -141,7 +126,6 @@ void	pipe_and_exec(t_data *data, int old_pipe[2], char **envp)
 			close(pipes[WRITE]);
 			close(pipes[READ]);
 		}
-		//write(2, data->cmd[0], 23);
 		execve(data->cmd[0], data->cmd, envp);
 		write(2, "error: cannot execute ", 23);
 		write(2, data->cmd[0], ft_strlen(data->cmd[0]));
@@ -151,37 +135,27 @@ void	pipe_and_exec(t_data *data, int old_pipe[2], char **envp)
 	}
 	if (pid > 0)
 	{
-		//waitpid(pid, NULL, 0);
-		// int fd = open("test", O_RDONLY, 0644);
-		// //char test = fd + '0';
-		// printf("%i test\n", fd);
-		// //write(2, &test, 10);
-		// //write(2, " test \n", 10);
-		// close(fd);
 		if (data->after == PIPE)
 		{
-			//waitpid(pid, NULL, 0);
 			pipe_and_exec(data->next, pipes, envp);
 			close(pipes[WRITE]);
-			//printf("close fd: pipe1: %d\n", pipes[1]);
 			close(pipes[READ]);
-			//printf("close fd: pipe0: %d\n", pipes[0]);
 		}
 	}
 }
 
 void	ft_exec(t_data *data, char **envp)
 {
-	if (!data || !data->cmd || !data->cmd[0])
+	if (!data || !data->before)
 		return ;
-	if (data->before == PIPE)
+	if (data->before == PIPE || !data->cmd || !data->cmd[0])
 		ft_exec(data->next, envp);
 	if (data->after != PIPE && !strcmp(data->cmd[0], "cd"))
 		ft_cd(data->cmd);
 	else if (data->cmd)
 	{
 		pipe_and_exec(data, NULL, envp);
-		//while (waitpid (-1, 0x0, 0x0) > 0);
+		while (waitpid (-1, 0x0, 0x0) > 0);
 	}
 	if (data->after == END)
 		return ;
@@ -193,15 +167,8 @@ int	main(int argc, char **argv, char **envp)
 	if (!argv)
 		return (0);
 	t_data *data = (argc > 1)? init_data(argv, argc, 1, START) : NULL;
-	//write (2, "\n\n", 3);
 	if (data)
 		ft_exec(data, envp);
-	// int fd = open("test", O_RDONLY, 0644);
-	// //char test = fd + '0';
-	// printf("%i test\n", fd);
-	//write(2, &test, 10);
-	//write(2, " test \n", 10);
-	//close(fd);
 	free_data(data);
 	return (0);
 }

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   microshell.h                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cfabian <cfabian@student.42wolfsburg.de>   +#+  +:+       +#+        */
+/*   By: cfabian <cfabian@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/30 19:38:37 by cfabian           #+#    #+#             */
-/*   Updated: 2022/06/01 14:13:42 by cfabian          ###   ########.fr       */
+/*   Updated: 2022/06/01 18:02:18 by cfabian          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,7 @@ enum e_pipe
 
 enum e_type
 {
+	NOTHING,
 	START,
 	PIPE,
 	SEMICOL,
