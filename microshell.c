@@ -6,7 +6,7 @@
 /*   By: cfabian <cfabian@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/30 19:55:33 by cfabian           #+#    #+#             */
-/*   Updated: 2022/06/01 21:48:56 by cfabian          ###   ########.fr       */
+/*   Updated: 2022/06/01 22:09:54 by cfabian          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,15 @@
 #include <stdio.h>
 
 int g_last_exit = 0;
+
+void fatal_check(int i)
+{
+	if (i == -1)
+	{
+		write(2, "error: fatal\n", 14);
+		exit(EXIT_FAILURE);
+	}
+}
 
 int ft_strlen(char *str)
 {
@@ -76,29 +85,22 @@ void	pipe_and_exec(char **cmd, int old_pipe[2], char **envp)
 {
 	int pipes[2];
 	int next_pipe = (find_next(cmd, "|") < find_next(cmd, ";"))? 1 : 0;
-	// printf("pipe: %d\n", next_pipe);
-	// write(2, "next: ", 7);
-	// write(2, cmd[0], ft_strlen(cmd[0]));
-	// write(2, "\n", 2);
 	
 	if (next_pipe)
-	{
-		pipe(pipes);
-		//printf(" oldpipe0: %d read: %d, write: %d \n", old_pipe[0], pipes[0], pipes[1]);
-	}
-		
+		fatal_check(pipe(pipes));
 	pid_t pid = fork();
+	fatal_check(pid);
 	if (pid == 0)
 	{
 		if (old_pipe[0] != STDIN_FILENO)
 		{
-			dup2(old_pipe[READ], STDIN_FILENO);
+			fatal_check(dup2(old_pipe[READ], STDIN_FILENO));
 			close(old_pipe[READ]);
 			close(old_pipe[WRITE]);
 		}
 		if (next_pipe)
 		{
-			dup2(pipes[WRITE], STDOUT_FILENO);
+			fatal_check(dup2(pipes[WRITE], STDOUT_FILENO));
 			close(pipes[WRITE]);
 			close(pipes[READ]);
 		}
@@ -138,7 +140,7 @@ void	ft_exec(char **argv_start, char **envp)
 	{
 		oldpipe[0] = STDIN_FILENO;
 		pipe_and_exec(argv_start, oldpipe, envp);
-		//while (waitpid (-1, &g_last_exit, 0x0) > 0);
+		while (waitpid (-1, &g_last_exit, 0x0) > 0);
 	}
 }
 
