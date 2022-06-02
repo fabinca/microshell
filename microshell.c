@@ -6,7 +6,7 @@
 /*   By: cfabian <cfabian@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/30 19:55:33 by cfabian           #+#    #+#             */
-/*   Updated: 2022/06/01 22:12:11 by cfabian          ###   ########.fr       */
+/*   Updated: 2022/06/02 12:59:13 by cfabian          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,10 +148,6 @@ int	main(int argc, char **argv, char **envp)
 {
 	int 		i = 1;
 
-	if (strcmp(argv[argc - 1], ";") == 0)
-		argv[argc - 1] = NULL;
-	else
-		argv[argc] = NULL;
 	while (i < argc)
 	{
 		ft_exec(argv + i, envp);
