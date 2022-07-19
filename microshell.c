@@ -6,7 +6,7 @@
 /*   By: cfabian <cfabian@student.42wolfsburg.de>   +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/30 19:55:33 by cfabian           #+#    #+#             */
-/*   Updated: 2022/07/19 12:33:14 by cfabian          ###   ########.fr       */
+/*   Updated: 2022/07/19 12:50:33 by cfabian          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,9 +95,10 @@ void	pipe_and_exec(char **cmd, int old_pipe[2], char **envp)
 		if (old_pipe[0] != STDIN_FILENO)
 		{
 			fatal_check(dup2(old_pipe[READ], STDIN_FILENO));
+			close(old_pipe[READ]);
+			close(old_pipe[WRITE]);
 		}
-		close(old_pipe[READ]);
-		close(old_pipe[WRITE]);
+		
 		if (next_pipe)
 		{
 			fatal_check(dup2(pipes[WRITE], STDOUT_FILENO));
@@ -113,8 +114,12 @@ void	pipe_and_exec(char **cmd, int old_pipe[2], char **envp)
 	}
 	if (pid > 0)
 	{
-		close(old_pipe[READ]);
-		close(old_pipe[WRITE]);
+		if (old_pipe[0] != STDIN_FILENO)
+		{
+			close(old_pipe[READ]);
+			close(old_pipe[WRITE]);
+		}
+		
 		waitpid (pid, &g_last_exit, WUNTRACED);
 		if (next_pipe)
 		{
@@ -150,5 +155,8 @@ int	main(int argc, char **argv, char **envp)
 		ft_exec(argv + i, envp);
 		i += find_next(argv + i, ";") + 1;
 	}
+	//int fd = open("fd_test", O_CREAT);
+	//printf("%i \n", fd);
+	//close (fd);
 	return (g_last_exit);
 }
