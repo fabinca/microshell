@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   microshell.c                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cfabian <cfabian@student.42.fr>            +#+  +:+       +#+        */
+/*   By: cfabian <cfabian@student.42wolfsburg.de>   +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/30 19:55:33 by cfabian           #+#    #+#             */
-/*   Updated: 2022/06/02 12:59:13 by cfabian          ###   ########.fr       */
+/*   Updated: 2022/07/19 12:33:14 by cfabian          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,9 +95,9 @@ void	pipe_and_exec(char **cmd, int old_pipe[2], char **envp)
 		if (old_pipe[0] != STDIN_FILENO)
 		{
 			fatal_check(dup2(old_pipe[READ], STDIN_FILENO));
-			close(old_pipe[READ]);
-			close(old_pipe[WRITE]);
 		}
+		close(old_pipe[READ]);
+		close(old_pipe[WRITE]);
 		if (next_pipe)
 		{
 			fatal_check(dup2(pipes[WRITE], STDOUT_FILENO));
@@ -113,16 +113,14 @@ void	pipe_and_exec(char **cmd, int old_pipe[2], char **envp)
 	}
 	if (pid > 0)
 	{
-		if (old_pipe[0] != STDIN_FILENO)
-		{
-			close(old_pipe[READ]);
-			close(old_pipe[WRITE]);
-		}
+		close(old_pipe[READ]);
+		close(old_pipe[WRITE]);
+		waitpid (pid, &g_last_exit, WUNTRACED);
 		if (next_pipe)
 		{
 			int offset = find_next(cmd, "|") + 1;
-			pipe_and_exec(cmd + offset, pipes, envp);
 			close(pipes[WRITE]);
+			pipe_and_exec(cmd + offset, pipes, envp);
 			close(pipes[READ]);
 		}
 	}
@@ -140,7 +138,6 @@ void	ft_exec(char **argv_start, char **envp)
 	{
 		oldpipe[0] = STDIN_FILENO;
 		pipe_and_exec(argv_start, oldpipe, envp);
-		while (waitpid (-1, &g_last_exit, 0x0) > 0);
 	}
 }
 
